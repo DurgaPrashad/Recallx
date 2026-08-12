@@ -6,11 +6,14 @@ const envSchema = z.object({
   HINDSIGHT_BANK_ID: z.string().default("recallx"),
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default("claude-sonnet-5"),
-  // libSQL connection URL. Defaults to a local embedded SQLite file for local dev
-  // (works with zero extra infra). Point this at a hosted libSQL/Turso database
-  // (e.g. libsql://your-db.turso.io) for serverless deployments like Vercel,
-  // where the local filesystem is ephemeral and can't be used as a database.
-  DATABASE_URL: z.string().default("file:./data/recallx.db"),
+  // libSQL connection URL. Left unset, Recall-X falls back to a zero-config
+  // database automatically (see db/index.ts): a local embedded SQLite file
+  // during normal local development, or an in-memory database that
+  // auto-seeds itself with demo data when no persistent filesystem is
+  // available (e.g. serverless platforms like Vercel). Point this at a
+  // hosted libSQL database (e.g. libsql://your-db.turso.io) for a real
+  // persistent deployment.
+  DATABASE_URL: z.string().optional(),
   // Required when DATABASE_URL points at a remote libSQL/Turso database.
   DATABASE_AUTH_TOKEN: z.string().optional(),
   SKIP_HINDSIGHT: z
@@ -25,7 +28,12 @@ let cached: Env | null = null;
 
 export function getEnv(): Env {
   if (cached) return cached;
-  const parsed = envSchema.safeParse(process.env);
+  // Some hosts (e.g. Vercel, when a variable is "detected" from .env.example
+  // but left blank in the dashboard) inject empty-string env vars rather than
+  // omitting them, which would defeat zod's `.default()`/`.optional()`
+  // handling. Treat blank strings the same as unset everywhere.
+  const cleaned = Object.fromEntries(Object.entries(process.env).map(([k, v]) => [k, v === "" ? undefined : v]));
+  const parsed = envSchema.safeParse(cleaned);
   if (!parsed.success) {
     console.error("[env] Invalid environment configuration", parsed.error.flatten());
     throw new Error("Invalid environment configuration. Check .env against .env.example.");

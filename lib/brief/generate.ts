@@ -7,7 +7,7 @@ import { computeMatchExplanation, type MatchExplanation } from "@/lib/brief/matc
 import { ruleBasedBrief } from "@/lib/brief/rule-based";
 import { synthesizeBriefWithClaude } from "@/lib/brief/claude-synthesize";
 import type { RecallXBrief } from "@/lib/brief/types";
-import { db } from "@/db";
+import { db, ensureDbReady } from "@/db";
 import { briefCache } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -118,6 +118,7 @@ export async function generateBrief(incidentKey: string, opts: GenerateBriefOpti
 }
 
 export async function getCachedBrief(incidentDbId: string): Promise<RecallXBrief | null> {
+  await ensureDbReady();
   const row = await db.query.briefCache.findFirst({ where: eq(briefCache.incidentId, incidentDbId) });
   if (!row) return null;
   try {

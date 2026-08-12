@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db, ensureDbReady } from "@/db";
 
 export interface MemoryStats {
   incidentsRemembered: number;
@@ -13,6 +13,7 @@ export interface MemoryStats {
 }
 
 export async function computeMemoryStats(): Promise<MemoryStats> {
+  await ensureDbReady();
   const allIncidents = await db.query.incidents.findMany();
   const allAttempts = await db.query.attempts.findMany();
   const allResolutions = await db.query.resolutions.findMany();
@@ -59,6 +60,7 @@ export interface RecurringPattern {
 }
 
 export async function computeRecurringPatterns(): Promise<RecurringPattern[]> {
+  await ensureDbReady();
   const allIncidents = await db.query.incidents.findMany();
   const allServices = await db.query.services.findMany();
   const serviceById = new Map(allServices.map((s) => [s.id, s.name]));
@@ -89,6 +91,7 @@ export interface ServiceMemorySummary {
 }
 
 export async function computeServiceMemorySummaries(): Promise<ServiceMemorySummary[]> {
+  await ensureDbReady();
   const allServices = await db.query.services.findMany();
   const allIncidents = await db.query.incidents.findMany();
   const allAttempts = await db.query.attempts.findMany();
@@ -118,6 +121,7 @@ export interface DeadEndEntry {
 }
 
 export async function computeDeadEndLibrary(): Promise<DeadEndEntry[]> {
+  await ensureDbReady();
   const allAttempts = await db.query.attempts.findMany();
   const allIncidents = await db.query.incidents.findMany();
   const incidentById = new Map(allIncidents.map((i) => [i.id, i]));

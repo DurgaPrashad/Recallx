@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/db";
+import { db, ensureDbReady } from "@/db";
 import { incidents } from "@/db/schema";
 import { getIncidentFull } from "@/lib/incidents";
 import { handleRouteError, jsonError, parseJsonBody } from "@/lib/api-utils";
@@ -27,6 +27,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const parsed = await parseJsonBody(req, patchSchema);
   if (!parsed.ok) return parsed.response;
   try {
+    await ensureDbReady();
     const existing = await db.query.incidents.findFirst({ where: eq(incidents.id, id) });
     if (!existing) return jsonError(404, "Incident not found");
     await db.update(incidents)

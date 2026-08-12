@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db, ensureDbReady } from "@/db";
 import { attempts, briefCache, engineers, incidents, metricSnapshots, resolutions, services, timelineEvents } from "@/db/schema";
 import { and, desc, eq, ne } from "drizzle-orm";
 import type { IncidentFull } from "@/lib/types";
@@ -11,6 +11,7 @@ export interface IncidentListItem {
 }
 
 export async function listIncidentsWithMemoryMatch(): Promise<IncidentListItem[]> {
+  await ensureDbReady();
   const rows = await listIncidents();
   const briefs = await db.select({ incidentId: briefCache.incidentId, json: briefCache.json }).from(briefCache);
   const briefByIncidentId = new Map(briefs.map((b) => [b.incidentId, b.json]));
@@ -30,6 +31,7 @@ export async function listIncidentsWithMemoryMatch(): Promise<IncidentListItem[]
 }
 
 export async function listIncidents() {
+  await ensureDbReady();
   const rows = await db
     .select({ incident: incidents, service: services, engineer: engineers })
     .from(incidents)
@@ -40,6 +42,7 @@ export async function listIncidents() {
 }
 
 export async function getIncidentFull(idOrKey: string): Promise<IncidentFull | null> {
+  await ensureDbReady();
   const incident = await db.query.incidents.findFirst({
     where: (t, { eq: eqOp, or }) => or(eqOp(t.id, idOrKey), eqOp(t.key, idOrKey)),
   });
@@ -79,6 +82,7 @@ export async function getIncidentFull(idOrKey: string): Promise<IncidentFull | n
 }
 
 export async function getIncidentSummaryByKey(key: string) {
+  await ensureDbReady();
   const incident = await db.query.incidents.findFirst({ where: eq(incidents.key, key) });
   if (!incident) return null;
   const [service, resolution, attemptRows] = await Promise.all([
@@ -91,6 +95,7 @@ export async function getIncidentSummaryByKey(key: string) {
 }
 
 export async function listResolvedIncidentsForService(serviceId: string, excludeIncidentId: string) {
+  await ensureDbReady();
   const rows = await db.query.incidents.findMany({
     where: and(eq(incidents.serviceId, serviceId), eq(incidents.status, "resolved"), ne(incidents.id, excludeIncidentId)),
     orderBy: (t, { desc: descOp }) => descOp(t.startedAt),

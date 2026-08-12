@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/db";
+import { db, ensureDbReady } from "@/db";
 import { incidents, services, timelineEvents } from "@/db/schema";
 import { listIncidentsWithMemoryMatch } from "@/lib/incidents";
 import { id as genId, nowIso } from "@/lib/ids";
@@ -39,6 +39,7 @@ export async function POST(req: Request) {
   const body = parsed.data;
 
   try {
+    await ensureDbReady();
     const service = await db.query.services.findFirst({ where: eq(services.slug, body.serviceSlug) });
     if (!service) return handleRouteError(new Error(`Unknown service: ${body.serviceSlug}`), "POST /api/incidents");
 

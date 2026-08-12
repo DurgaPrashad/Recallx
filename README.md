@@ -122,7 +122,7 @@ See `.env.example` for the full annotated list. Summary:
 | `HINDSIGHT_BANK_ID` | Memory bank name, created automatically | `recallx` |
 | `ANTHROPIC_API_KEY` | Powers Brief narration + Ask Recall-X fallback synthesis | _(unset → rule-based mode)_ |
 | `ANTHROPIC_MODEL` | Model id | `claude-sonnet-5` |
-| `DATABASE_URL` | libSQL connection URL — local embedded file for dev, hosted (e.g. Turso) for serverless deploys | `file:./data/recallx.db` |
+| `DATABASE_URL` | libSQL connection URL — local embedded file for dev, hosted (e.g. Turso) for a persistent serverless deploy | _(unset → auto-seeded in-memory fallback, see below)_ |
 | `DATABASE_AUTH_TOKEN` | Auth token for a hosted libSQL/Turso database | _(unset)_ |
 | `SKIP_HINDSIGHT` | Force fallback mode even if Hindsight is reachable | `false` |
 
@@ -130,6 +130,7 @@ See `.env.example` for the full annotated list. Summary:
 
 Recall-X is designed to **never show a broken or blank screen**, per the product principle that this has to be demoable under real conditions:
 
+- **`DATABASE_URL` unset or blank** → falls back to an in-memory libSQL database that creates its own schema and auto-seeds the full demo dataset on first access (see [Deploying to Vercel](#deploying-to-vercel)). A blank string is treated the same as unset — some hosts inject empty-string env vars for variables that were "detected" but never filled in, rather than omitting them.
 - **Hindsight unreachable** → the Recall-X Brief and Similar Incidents reconstruct evidence from Recall-X's own local SQLite ledger (same-service, same-pattern matching instead of semantic recall), clearly labeled with a "memory service unavailable" banner. Ask Recall-X (which has no meaningful answer without live memory) says so plainly instead of guessing. Attempts/resolutions are still recorded locally and marked as pending sync.
 - **Anthropic key unset or the API call fails** → Brief synthesis falls back to a deterministic, non-LLM template that is still fully grounded in the same retrieved evidence — every citation is real, just without narrative polish.
 - Every mutation (logging an attempt, teaching an outcome, resolving) reports back whether it reached Hindsight, so the UI is always honest about what's actually persisted where.
@@ -138,7 +139,15 @@ You can force this mode at any time with `SKIP_HINDSIGHT=true` to demo graceful 
 
 ## Deploying to Vercel
 
-Vercel Functions have an ephemeral, per-invocation filesystem — a local SQLite file can't be used as the database there (different requests can hit different instances with no shared disk). Recall-X's data layer is libSQL, so the fix is to point it at a hosted libSQL database instead of a local file; no schema or code changes needed.
+Vercel Functions have an ephemeral, per-invocation filesystem — a local SQLite file can't be used as the database there (different requests can hit different instances with no shared disk).
+
+### Option A — zero config (instant demo, no persistence)
+
+**Just deploy — no environment variables required.** If `DATABASE_URL` isn't set, Recall-X automatically falls back to an in-memory libSQL database that creates its own schema and seeds itself with the full demo dataset (23 incidents, the hero scenario, everything) the moment the first request hits a given serverless instance. `HINDSIGHT_API_URL`/`ANTHROPIC_API_KEY` are equally optional — leave them unset and the app runs in its rule-based/local-ledger fallback modes described above.
+
+The trade-off: that data lives only for the lifetime of that warm instance. A cold start (a new deploy, a scaled-up instance, low traffic) gets a fresh copy of the same pristine demo data — great for "click the link and it just works," not for data you need to persist. For that, use Option B.
+
+### Option B — persistent deployment
 
 1. **Create a hosted libSQL database.** [Turso](https://turso.tech) has a free tier and is the easiest path:
    ```bash
@@ -154,7 +163,7 @@ Vercel Functions have an ephemeral, per-invocation filesystem — a local SQLite
 3. **Set environment variables in the Vercel project** (Settings → Environment Variables): `DATABASE_URL`, `DATABASE_AUTH_TOKEN`, `HINDSIGHT_API_URL` (a Hindsight instance reachable from Vercel — a local `localhost:8888` won't be, so use a deployed/hosted Hindsight endpoint or leave `SKIP_HINDSIGHT=true` to run in fallback mode), `HINDSIGHT_API_KEY` if applicable, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`.
 4. **Deploy.** Vercel auto-detects Next.js; no build command changes needed.
 
-If you don't want to stand up a hosted database or Hindsight instance for a quick deploy, set `SKIP_HINDSIGHT=true` and point `DATABASE_URL` at a Turso database anyway (still required — Vercel has no writable local disk) — the app runs fully in its local-ledger/rule-based fallback mode described above.
+Leaving any *individual* variable blank in Vercel's dashboard is safe — Recall-X treats a blank value the same as unset and falls back accordingly (per-feature, not all-or-nothing), so e.g. you can configure a real `DATABASE_URL` for persistence while still leaving Hindsight/Anthropic unset to run those parts in fallback mode.
 
 ## Technology stack
 
@@ -183,10 +192,13 @@ lib/
   memory/                     tagging scheme, retain orchestration, recall aggregation, SQLite fallback
   brief/                      Recall-X Brief pipeline: Claude synthesis, rule-based fallback, match explanation
   ask/                        Ask Recall-X via Hindsight reflect() + response_schema
+  seed/run-seed.ts             shared seeding logic (used by scripts/seed.ts and the zero-config DB fallback)
   incidents.ts, design.ts, env.ts, api-utils.ts
-db/                          Drizzle schema + migrations (the operational "system of record")
+db/                          Drizzle schema, migrations, and the libSQL client (the operational "system of record")
+  index.ts                     DB client + ensureDbReady() zero-config fallback
+  schema-ddl.ts                embedded CREATE TABLE statements for the in-memory fallback path
 scripts/
-  seed.ts                     seeds SQLite + retains into Hindsight
+  seed.ts                     CLI wrapper around lib/seed/run-seed.ts — seeds SQLite + retains into Hindsight
   data/incidents.ts           ~22 historical incidents + 1 hero incident, hand-authored
 ```
 

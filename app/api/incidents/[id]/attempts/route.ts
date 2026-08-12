@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/db";
+import { db, ensureDbReady } from "@/db";
 import { attempts, incidents, timelineEvents } from "@/db/schema";
 import { id as genId, nowIso } from "@/lib/ids";
 import { handleRouteError, jsonError, parseJsonBody } from "@/lib/api-utils";
@@ -16,6 +16,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const parsed = await parseJsonBody(req, schema);
   if (!parsed.ok) return parsed.response;
   try {
+    await ensureDbReady();
     const incident = await db.query.incidents.findFirst({ where: eq(incidents.id, id) });
     if (!incident) return jsonError(404, "Incident not found");
 

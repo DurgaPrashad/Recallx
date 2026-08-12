@@ -6,19 +6,20 @@ import path from "node:path";
 import { getEnv } from "../lib/env";
 
 const env = getEnv();
+const url = env.DATABASE_URL ?? "file:./data/recallx.db";
 
-if (env.DATABASE_URL.startsWith("file:")) {
-  const filePath = env.DATABASE_URL.slice("file:".length);
+if (url.startsWith("file:")) {
+  const filePath = url.slice("file:".length);
   const resolvedPath = path.resolve(process.cwd(), filePath);
   fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
 }
 
-const client = createClient({ url: env.DATABASE_URL, authToken: env.DATABASE_AUTH_TOKEN });
+const client = createClient({ url, authToken: env.DATABASE_AUTH_TOKEN });
 const db = drizzle(client);
 
 async function main() {
   await migrate(db, { migrationsFolder: path.resolve(process.cwd(), "db/migrations") });
-  console.log(`[db] Migrated ${env.DATABASE_URL}`);
+  console.log(`[db] Migrated ${url}`);
   client.close();
 }
 
