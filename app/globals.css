@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+
+  /* Surfaces — dark-first, single theme */
+  --color-canvas: #0a0b0d;
+  --color-surface-1: #14161a;
+  --color-surface-2: #1b1e23;
+  --color-surface-3: #23262d;
+  --color-border: rgba(255, 255, 255, 0.09);
+  --color-border-strong: rgba(255, 255, 255, 0.16);
+
+  /* Ink */
+  --color-text-primary: #f2f4f7;
+  --color-text-secondary: #aab0bc;
+  --color-text-muted: #7b8291;
+
+  /* Brand accent (categorical "aqua" slot, dark step) */
+  --color-accent: #1fb88a;
+  --color-accent-soft: rgba(31, 184, 138, 0.14);
+  --color-accent-strong: #4fd6ac;
+
+  /* Status palette (fixed — dark steps, reserved for state, never reused as series) */
+  --color-good: #0ca30c;
+  --color-good-soft: rgba(12, 163, 12, 0.14);
+  --color-warning: #fab219;
+  --color-warning-soft: rgba(250, 178, 25, 0.14);
+  --color-serious: #ec835a;
+  --color-serious-soft: rgba(236, 131, 90, 0.14);
+  --color-critical: #e05a5a;
+  --color-critical-soft: rgba(224, 90, 90, 0.16);
+
+  /* Sequential blue — magnitude (confidence / relevance) */
+  --color-seq-100: #cde2fb;
+  --color-seq-300: #6da7ec;
+  --color-seq-400: #3987e5;
+  --color-seq-500: #256abf;
+
+  /* Categorical (fixed order — services, chart series) */
+  --color-cat-1: #3987e5; /* blue */
+  --color-cat-2: #d9803f; /* orange */
+  --color-cat-3: #1fb88a; /* aqua */
+  --color-cat-4: #c98500; /* yellow */
+  --color-cat-5: #d55181; /* magenta */
+  --color-cat-6: #9085e9; /* violet */
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-accent-soft);
+  color: var(--color-text-primary);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Subtle scrollbars for the ops-console feel */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-3);
+  border-radius: 8px;
+  border: 2px solid var(--color-canvas);
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
