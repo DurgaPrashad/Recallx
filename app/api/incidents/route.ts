@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     const incidentId = genId("inc");
     const startedAt = nowIso();
 
-    db.insert(incidents)
+    await db.insert(incidents)
       .values({
         id: incidentId,
         key,
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
       })
       .run();
 
-    db.insert(timelineEvents)
+    await db.insert(timelineEvents)
       .values({
         id: genId("tl"),
         incidentId,

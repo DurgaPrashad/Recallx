@@ -26,12 +26,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!attempt) return jsonError(404, "Attempt not found");
 
     const endedAt = attempt.endedAt ?? nowIso();
-    db.update(attempts)
+    await db.update(attempts)
       .set({ outcome: parsed.data.outcome, outcomeNotes: parsed.data.outcomeNotes, endedAt })
       .where(eq(attempts.id, attemptId))
       .run();
 
-    db.insert(timelineEvents)
+    await db.insert(timelineEvents)
       .values({
         id: genId("tl"),
         incidentId: id,
@@ -57,7 +57,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         { ...attempt, outcome: parsed.data.outcome, outcomeNotes: parsed.data.outcomeNotes, endedAt },
         endedAt
       );
-      db.update(attempts).set({ memorySynced: true }).where(eq(attempts.id, attemptId)).run();
+      await db.update(attempts).set({ memorySynced: true }).where(eq(attempts.id, attemptId)).run();
       memoryLearned = true;
     } catch (err) {
       if (!(err instanceof HindsightUnavailableError)) throw err;

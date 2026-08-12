@@ -122,7 +122,8 @@ See `.env.example` for the full annotated list. Summary:
 | `HINDSIGHT_BANK_ID` | Memory bank name, created automatically | `recallx` |
 | `ANTHROPIC_API_KEY` | Powers Brief narration + Ask Recall-X fallback synthesis | _(unset → rule-based mode)_ |
 | `ANTHROPIC_MODEL` | Model id | `claude-sonnet-5` |
-| `DATABASE_PATH` | SQLite file location | `./data/recallx.db` |
+| `DATABASE_URL` | libSQL connection URL — local embedded file for dev, hosted (e.g. Turso) for serverless deploys | `file:./data/recallx.db` |
+| `DATABASE_AUTH_TOKEN` | Auth token for a hosted libSQL/Turso database | _(unset)_ |
 | `SKIP_HINDSIGHT` | Force fallback mode even if Hindsight is reachable | `false` |
 
 ## Fallback behavior
@@ -135,11 +136,31 @@ Recall-X is designed to **never show a broken or blank screen**, per the product
 
 You can force this mode at any time with `SKIP_HINDSIGHT=true` to demo graceful degradation deliberately.
 
+## Deploying to Vercel
+
+Vercel Functions have an ephemeral, per-invocation filesystem — a local SQLite file can't be used as the database there (different requests can hit different instances with no shared disk). Recall-X's data layer is libSQL, so the fix is to point it at a hosted libSQL database instead of a local file; no schema or code changes needed.
+
+1. **Create a hosted libSQL database.** [Turso](https://turso.tech) has a free tier and is the easiest path:
+   ```bash
+   turso db create recallx
+   turso db show recallx --url          # -> DATABASE_URL
+   turso db tokens create recallx       # -> DATABASE_AUTH_TOKEN
+   ```
+2. **Run migrations and seed against it** from your machine before (or after) deploying:
+   ```bash
+   DATABASE_URL=libsql://your-db.turso.io DATABASE_AUTH_TOKEN=... npm run db:migrate
+   DATABASE_URL=libsql://your-db.turso.io DATABASE_AUTH_TOKEN=... npm run seed
+   ```
+3. **Set environment variables in the Vercel project** (Settings → Environment Variables): `DATABASE_URL`, `DATABASE_AUTH_TOKEN`, `HINDSIGHT_API_URL` (a Hindsight instance reachable from Vercel — a local `localhost:8888` won't be, so use a deployed/hosted Hindsight endpoint or leave `SKIP_HINDSIGHT=true` to run in fallback mode), `HINDSIGHT_API_KEY` if applicable, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`.
+4. **Deploy.** Vercel auto-detects Next.js; no build command changes needed.
+
+If you don't want to stand up a hosted database or Hindsight instance for a quick deploy, set `SKIP_HINDSIGHT=true` and point `DATABASE_URL` at a Turso database anyway (still required — Vercel has no writable local disk) — the app runs fully in its local-ledger/rule-based fallback mode described above.
+
 ## Technology stack
 
 - **Next.js 16** (App Router, React 19, TypeScript) — server components for data-heavy pages, client components for interactive workspace/chat surfaces
 - **Tailwind CSS v4** — CSS-first theme, single dark design system
-- **SQLite** (`better-sqlite3` + Drizzle ORM) — the operational system of record (live incidents, timeline, attempts, resolutions)
+- **libSQL** (`@libsql/client` + Drizzle ORM) — the operational system of record (live incidents, timeline, attempts, resolutions). Runs as an embedded local SQLite file for development and against a hosted libSQL database (e.g. [Turso](https://turso.tech)) in serverless deployments
 - **[`@vectorize-io/hindsight-client`](https://github.com/vectorize-io/hindsight)** — the official Hindsight TypeScript SDK; all memory operations go through it
 - **`@anthropic-ai/sdk`** (Claude) — Brief synthesis and Ask Recall-X reasoning
 - **Recharts** — incident metric sparklines

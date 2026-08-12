@@ -29,7 +29,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const timeToResolutionMin = Math.round((new Date(resolvedAt).getTime() - new Date(full.incident.startedAt).getTime()) / 60_000);
 
     const resolutionId = genId("res");
-    db.insert(resolutions)
+    await db.insert(resolutions)
       .values({
         id: resolutionId,
         incidentId: id,
@@ -42,9 +42,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       })
       .run();
 
-    db.update(incidents).set({ status: "resolved", resolvedAt }).where(eq(incidents.id, id)).run();
+    await db.update(incidents).set({ status: "resolved", resolvedAt }).where(eq(incidents.id, id)).run();
 
-    db.insert(timelineEvents)
+    await db.insert(timelineEvents)
       .values({
         id: genId("tl"),
         incidentId: id,
@@ -78,7 +78,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         },
         resolvedAt
       );
-      db.update(resolutions).set({ memorySynced: true }).where(eq(resolutions.id, resolutionId)).run();
+      await db.update(resolutions).set({ memorySynced: true }).where(eq(resolutions.id, resolutionId)).run();
     } catch (err) {
       if (!(err instanceof HindsightUnavailableError)) throw err;
       hindsightAvailable = false;

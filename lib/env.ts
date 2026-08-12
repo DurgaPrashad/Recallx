@@ -6,7 +6,13 @@ const envSchema = z.object({
   HINDSIGHT_BANK_ID: z.string().default("recallx"),
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default("claude-sonnet-5"),
-  DATABASE_PATH: z.string().default("./data/recallx.db"),
+  // libSQL connection URL. Defaults to a local embedded SQLite file for local dev
+  // (works with zero extra infra). Point this at a hosted libSQL/Turso database
+  // (e.g. libsql://your-db.turso.io) for serverless deployments like Vercel,
+  // where the local filesystem is ephemeral and can't be used as a database.
+  DATABASE_URL: z.string().default("file:./data/recallx.db"),
+  // Required when DATABASE_URL points at a remote libSQL/Turso database.
+  DATABASE_AUTH_TOKEN: z.string().optional(),
   SKIP_HINDSIGHT: z
     .string()
     .optional()

@@ -21,7 +21,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!incident) return jsonError(404, "Incident not found");
 
     const eventId = genId("tl");
-    db.insert(timelineEvents)
+    await db.insert(timelineEvents)
       .values({
         id: eventId,
         incidentId: id,

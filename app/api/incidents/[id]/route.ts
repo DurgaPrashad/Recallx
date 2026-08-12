@@ -29,7 +29,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   try {
     const existing = await db.query.incidents.findFirst({ where: eq(incidents.id, id) });
     if (!existing) return jsonError(404, "Incident not found");
-    db.update(incidents)
+    await db.update(incidents)
       .set({ ...parsed.data })
       .where(eq(incidents.id, id))
       .run();

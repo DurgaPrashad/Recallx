@@ -23,7 +23,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const attemptId = genId("att");
     const startedAt = nowIso();
 
-    db.insert(attempts)
+    await db.insert(attempts)
       .values({
         id: attemptId,
         incidentId: id,
@@ -39,7 +39,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       })
       .run();
 
-    db.insert(timelineEvents)
+    await db.insert(timelineEvents)
       .values({
         id: genId("tl"),
         incidentId: id,

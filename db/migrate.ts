@@ -1,18 +1,28 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
+import { migrate } from "drizzle-orm/libsql/migrator";
 import fs from "node:fs";
 import path from "node:path";
 import { getEnv } from "../lib/env";
 
 const env = getEnv();
-const resolvedPath = path.resolve(process.cwd(), env.DATABASE_PATH);
-fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
 
-const sqlite = new Database(resolvedPath);
-const db = drizzle(sqlite);
+if (env.DATABASE_URL.startsWith("file:")) {
+  const filePath = env.DATABASE_URL.slice("file:".length);
+  const resolvedPath = path.resolve(process.cwd(), filePath);
+  fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
+}
 
-migrate(db, { migrationsFolder: path.resolve(process.cwd(), "db/migrations") });
+const client = createClient({ url: env.DATABASE_URL, authToken: env.DATABASE_AUTH_TOKEN });
+const db = drizzle(client);
 
-console.log(`[db] Migrated ${resolvedPath}`);
-sqlite.close();
+async function main() {
+  await migrate(db, { migrationsFolder: path.resolve(process.cwd(), "db/migrations") });
+  console.log(`[db] Migrated ${env.DATABASE_URL}`);
+  client.close();
+}
+
+main().catch((err) => {
+  console.error("[db] Migration failed:", err);
+  process.exit(1);
+});

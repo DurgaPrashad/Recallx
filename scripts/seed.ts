@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { eq } from "drizzle-orm";
-import { db, sqlite } from "@/db";
+import { client, db } from "@/db";
 import { attempts, engineers, incidents, metricSnapshots, resolutions, services, timelineEvents } from "@/db/schema";
 import { ENGINEERS, SERVICES } from "./data/services";
 import { INCIDENTS } from "./data/incidents";
@@ -76,28 +76,28 @@ function buildMetricPoints(
 }
 
 async function main() {
-  console.log(`[seed] Using database at ${env.DATABASE_PATH}`);
+  console.log(`[seed] Using database at ${env.DATABASE_URL}`);
   console.log("[seed] Clearing existing data...");
-  db.delete(metricSnapshots).run();
-  db.delete(timelineEvents).run();
-  db.delete(attempts).run();
-  db.delete(resolutions).run();
-  db.delete(incidents).run();
-  db.delete(engineers).run();
-  db.delete(services).run();
+  await db.delete(metricSnapshots).run();
+  await db.delete(timelineEvents).run();
+  await db.delete(attempts).run();
+  await db.delete(resolutions).run();
+  await db.delete(incidents).run();
+  await db.delete(engineers).run();
+  await db.delete(services).run();
 
   const serviceIdBySlug = new Map<string, string>();
   for (const s of SERVICES) {
     const id = genId("svc");
     serviceIdBySlug.set(s.slug, id);
-    db.insert(services).values({ id, name: s.name, slug: s.slug, tier: s.tier, description: s.description }).run();
+    await db.insert(services).values({ id, name: s.name, slug: s.slug, tier: s.tier, description: s.description }).run();
   }
 
   const engineerIdByHandle = new Map<string, string>();
   for (const e of ENGINEERS) {
     const id = genId("eng");
     engineerIdByHandle.set(e.handle, id);
-    db.insert(engineers).values({ id, name: e.name, handle: e.handle, role: e.role }).run();
+    await db.insert(engineers).values({ id, name: e.name, handle: e.handle, role: e.role }).run();
   }
 
   console.log(`[seed] Inserted ${SERVICES.length} services, ${ENGINEERS.length} engineers`);
@@ -137,7 +137,7 @@ async function main() {
 
     if (seed.patternTag) patternSet.add(seed.patternTag);
 
-    db.insert(incidents)
+    await db.insert(incidents)
       .values({
         id: incidentId,
         key: seed.key,
@@ -166,7 +166,7 @@ async function main() {
       .run();
 
     // Timeline: alert first.
-    db.insert(timelineEvents)
+    await db.insert(timelineEvents)
       .values({
         id: genId("tl"),
         incidentId,
@@ -182,11 +182,11 @@ async function main() {
     const engineerName = ENGINEERS.find((e) => e.handle === seed.assignedEngineer)?.name ?? seed.assignedEngineer;
 
     const insertedAttempts: { id: string; startedAtIso: string; endedAtIso: string }[] = [];
-    seed.attempts.forEach((a, idx) => {
+    for (const [idx, a] of seed.attempts.entries()) {
       const attemptId = genId("att");
       const attStart = addMinutes(startedAt, a.startMinute);
       const attEnd = addMinutes(startedAt, a.endMinute);
-      db.insert(attempts)
+      await db.insert(attempts)
         .values({
           id: attemptId,
           incidentId,
@@ -205,7 +205,7 @@ async function main() {
       totalAttempts += 1;
       if (a.outcome === "failed" || a.outcome === "partial") totalDeadEnds += 1;
 
-      db.insert(timelineEvents)
+      await db.insert(timelineEvents)
         .values({
           id: genId("tl"),
           incidentId,
@@ -217,7 +217,7 @@ async function main() {
           createdAt: nowIso(),
         })
         .run();
-      db.insert(timelineEvents)
+      await db.insert(timelineEvents)
         .values({
           id: genId("tl"),
           incidentId,
@@ -229,12 +229,12 @@ async function main() {
           createdAt: nowIso(),
         })
         .run();
-    });
+    }
 
     let resolutionId: string | null = null;
     if (seed.resolution && resolvedAt) {
       resolutionId = genId("res");
-      db.insert(resolutions)
+      await db.insert(resolutions)
         .values({
           id: resolutionId,
           incidentId,
@@ -247,7 +247,7 @@ async function main() {
         })
         .run();
       totalFixes += 1;
-      db.insert(timelineEvents)
+      await db.insert(timelineEvents)
         .values({
           id: genId("tl"),
           incidentId,
@@ -273,7 +273,7 @@ async function main() {
       seed.dbConnectionsLimit ?? null
     );
     for (const p of metricPoints) {
-      db.insert(metricSnapshots)
+      await db.insert(metricSnapshots)
         .values({
           id: genId("met"),
           incidentId,
@@ -340,7 +340,7 @@ async function main() {
             },
             inserted.endedAtIso
           );
-          db.update(attempts).set({ memorySynced: true }).where(eq(attempts.id, inserted.id)).run();
+          await db.update(attempts).set({ memorySynced: true }).where(eq(attempts.id, inserted.id)).run();
         }
         if (seed.resolution && resolutionId && resolvedAt) {
           await retainResolution(
@@ -358,7 +358,7 @@ async function main() {
             },
             resolvedAt
           );
-          db.update(resolutions).set({ memorySynced: true }).where(eq(resolutions.id, resolutionId)).run();
+          await db.update(resolutions).set({ memorySynced: true }).where(eq(resolutions.id, resolutionId)).run();
         }
         process.stdout.write(`\r[seed] Retained into Hindsight: ${i + 1}/${INCIDENTS.length} (${seed.key})     `);
       } catch (err) {
@@ -380,7 +380,7 @@ async function main() {
     console.log(`  ⚠ ${retainFailures} incident(s) failed to retain into Hindsight — check Hindsight is running.`);
   }
   console.log("\n[seed] Done.");
-  sqlite.close();
+  client.close();
 }
 
 main().catch((err) => {

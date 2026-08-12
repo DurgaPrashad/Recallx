@@ -11,13 +11,13 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx db/migrate.ts",
-    "db:reset": "rm -f data/recallx.db && npm run db:migrate",
+    "db:reset": "rm -f data/recallx.db data/recallx.db-wal data/recallx.db-shm && npm run db:migrate",
     "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
+    "@libsql/client": "^0.17.4",
     "@vectorize-io/hindsight-client": "^0.9.0",
-    "better-sqlite3": "^13.0.3",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "framer-motion": "^13.1.0",
@@ -30,7 +30,6 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",

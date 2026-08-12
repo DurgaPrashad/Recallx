@@ -3,8 +3,9 @@ import type { Config } from "drizzle-kit";
 export default {
   schema: "./db/schema.ts",
   out: "./db/migrations",
-  dialect: "sqlite",
+  dialect: "turso",
   dbCredentials: {
-    url: process.env.DATABASE_PATH ?? "./data/recallx.db",
+    url: process.env.DATABASE_URL ?? "file:./data/recallx.db",
+    authToken: process.env.DATABASE_AUTH_TOKEN,
   },
 } satisfies Config;
