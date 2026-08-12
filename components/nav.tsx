@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const LINKS = [
-  { href: "/", label: "Command Center" },
+  { href: "/command-center", label: "Command Center" },
   { href: "/ask", label: "Ask Recall-X" },
   { href: "/memory", label: "Memory Explorer" },
   { href: "/dead-ends", label: "Dead-End Library" },
@@ -67,7 +67,7 @@ export function Nav() {
         </Link>
         <nav className="flex flex-1 items-center gap-1">
           {LINKS.map((link) => {
-            const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
+            const active = pathname.startsWith(link.href);
             return (
               <Link
                 key={link.href}
